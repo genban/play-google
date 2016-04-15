@@ -66,15 +66,12 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
 
             if (response.status >= 200 && response.status < 300) {
               val refinedHost =
-                if(request.host.toLowerCase.contains("heroku")){
+                if(request.host.contains(":")){
+                  request.host
+                }else{
                   s"${request.host}:80"
-                } else {
-                  if(request.host.contains(":")){
-                    request.host
-                  }else{
-                    s"${request.host}:80"
-                  }
                 }
+
               val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
               if(contentType.contains("text/html")){
                 //Remove blocked request
@@ -88,7 +85,7 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                   content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
 
                   Ok(content)
-                    .withHeaders(respHeaders.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+                    .withHeaders(respHeaders.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
                 }
               } else if(contentType.contains("text/javascript")){
                 //Remove blocked request
@@ -100,7 +97,8 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                       .replace("www.google.com",  s"${refinedHost}/blackHole")
                       .replace("id.google.com",   s"${refinedHost}/blackHole")
 
-                  Ok(content + """function rwt(link){ link.target="_blank"; link.click(); }""").withHeaders(respHeaders.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+                  Ok(content + """function rwt(link){ link.target="_blank"; link.click(); }""")
+                    .withHeaders(respHeaders.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
                 }
               } else {
                 // If there's a content length, send that, otherwise return the body chunked
@@ -111,6 +109,8 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                     Future.successful(Ok.chunked(body).withHeaders(respHeaders.map(t => (t._1, t._2.mkString("; "))).toList: _*))
                 }
               }
+            } else if(response.status == 304) {
+              Future.successful(NotModified)
             } else {
               Future.successful(InternalServerError("Sorry, server return " + response.status))
             }
