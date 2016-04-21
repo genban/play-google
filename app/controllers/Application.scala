@@ -14,26 +14,23 @@ import scala.concurrent.Future
 class Application @Inject() (ws: WSClient, implicit val mat: Materializer) extends Controller {
   val ignoreHeaders = Set("host", "play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time")
 
-  def get(path: String, bbaassee: String) = Action.async{ request =>
-    path match {
-      case path if path.contains("204") =>
+  def get(pathPart: String, bbaassee: String) = Action.async{ request =>
+    request.path match {
+      case path if path.toLowerCase.startsWith("/gen_204") =>
         Future.successful(Results.NoContent)
-
+      case path if path.toLowerCase.startsWith("/url") =>
+        request.getQueryString("url") match {
+          case Some(url) =>
+            //println("Redirect to " + url)
+            Future.successful(TemporaryRedirect(url))
+          case _ =>
+            Future.successful(Ok("Redirect to invalid url."))
+        }
       //request.uri sometimes start with http...
       case path =>
-        val refinedPath = path match {
-          case p if p == "/" =>
-            "http://www.google.com/"
-          case p if p.startsWith("/") =>
-            s"http://www.google.com${p}"
-          case p =>
-            s"http://www.google.com/${p}"
-        }
-
         val refinedRawQueryStr = bbaassee match {
           case base if base.trim == "" =>
             request.rawQueryString
-
           case base =>
             val bytes = Base64.getUrlDecoder.decode(base)
             new String(bytes, "utf-8")
@@ -50,9 +47,8 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
           case other => other
         }
 
-
         //val req = ws.url(url).withMethod("GET").withHeaders(headers.toList: _*)
-        val req = ws.url(refinedPath + "?" + refinedRawQueryStr).withMethod("GET").withHeaders(headers.toList: _*)
+        val req = ws.url(s"http://www.google.com${request.path}?${refinedRawQueryStr}").withMethod("GET").withHeaders(headers.toList: _*)
         req
           //.withRequestFilter(AhcCurlRequestLogger())
           .stream().flatMap {
