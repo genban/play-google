@@ -14,6 +14,12 @@ import scala.concurrent.Future
 class Application @Inject() (ws: WSClient, implicit val mat: Materializer) extends Controller {
   val ignoreHeaders = Set("host", "play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time")
 
+  /**
+    * Proxy all requests to Google Search.
+    * @param pathPart match the sub path in request.
+    * @param bbaassee raw query parameters encoded in base64 format.
+    * @return Result
+    */
   def get(pathPart: String, bbaassee: String) = Action.async{ request =>
     request.path match {
       case path if path.toLowerCase.startsWith("/gen_204") =>
@@ -21,12 +27,10 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
       case path if path.toLowerCase.startsWith("/url") =>
         request.getQueryString("url") match {
           case Some(url) =>
-            //println("Redirect to " + url)
             Future.successful(TemporaryRedirect(url))
           case _ =>
             Future.successful(Ok("Redirect to invalid url."))
         }
-      //request.uri sometimes start with http...
       case path =>
         val refinedRawQueryStr = bbaassee match {
           case base if base.trim == "" =>
@@ -105,8 +109,11 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                     Future.successful(Ok.chunked(body).withHeaders(respHeaders.map(t => (t._1, t._2.mkString("; "))).toList: _*))
                 }
               }
-            } else if(response.status == 304) {
-              Future.successful(NotModified)
+            } else if(response.status >= 300 && response.status < 500) {
+              Future.successful{
+                Status(response.status)
+                  .withHeaders(respHeaders.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+              }
             } else {
               Future.successful(InternalServerError("Sorry, server return " + response.status))
             }
