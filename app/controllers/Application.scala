@@ -1,13 +1,12 @@
 package controllers
 
 import java.util.Base64
-
 import akka.stream.Materializer
 import com.google.inject.Inject
 import play.api.http.HttpEntity
 import play.api.libs.ws.{StreamedResponse, WSClient}
 import play.api.mvc._
-
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -32,14 +31,6 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
             Future.successful(Ok("Redirect to invalid url."))
         }
       case path =>
-        val refinedRawQueryStr = bbaassee match {
-          case base if base.trim == "" =>
-            request.rawQueryString
-          case base =>
-            val bytes = Base64.getUrlDecoder.decode(base)
-            new String(bytes, "utf-8")
-        }
-
         //Remove proxy headers
         var headers = request.headers.toSimpleMap.filterKeys{ key =>
           !ignoreHeaders.contains(key.trim.toLowerCase())
@@ -50,9 +41,20 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
             (k, v.replaceFirst("""//[^/]+/?""", "//www.google.com/"))
           case other => other
         }
-
-        //val req = ws.url(url).withMethod("GET").withHeaders(headers.toList: _*)
-        val req = ws.url(s"http://www.google.com${request.path}?${refinedRawQueryStr}").withMethod("GET").withHeaders(headers.toList: _*)
+        val refinedRawQueryStr = bbaassee match {
+          case base if base.trim == "" =>
+            request.rawQueryString
+          case base =>
+            val bytes = Base64.getUrlDecoder.decode(base)
+            new String(bytes, "utf-8")
+        }
+        val url =
+          if(request.path == "/"){
+            s"https://www.google.com"
+          } else {
+            s"https://www.google.com${request.path}?${refinedRawQueryStr}"
+          }
+        val req = ws.url(url).withRequestTimeout(15 seconds).withMethod("GET").withHeaders(headers.toList: _*)
         req
           //.withRequestFilter(AhcCurlRequestLogger())
           .stream().flatMap {
