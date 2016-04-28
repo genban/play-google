@@ -130,4 +130,11 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
   def blackHole(path: String) = Action {
     Results.NoContent
   }
+
+  def robots = Action {
+    Ok("""User-agent: *
+         |Disallow: /
+       """.stripMargin
+    )
+  }
 }

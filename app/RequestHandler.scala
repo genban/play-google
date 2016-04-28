@@ -19,6 +19,8 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       reqPath.startsWith("/complete/search") ||
       reqPath.startsWith("/favicon.ico") ||
       reqPath.startsWith("/robots.txt") ||
+      reqPath.startsWith("/logo/") ||
+      reqPath.startsWith("/logos/") ||
       reqPath.startsWith("/textinputassistant/tia.png")
     ){
       //println("Pass: " + request.path)

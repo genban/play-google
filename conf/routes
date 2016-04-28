@@ -1,15 +1,17 @@
 # Routes
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
-GET     /assets/*file                   controllers.Assets.versioned(path="/public", file: Asset)
+GET     /robots.txt                                  controllers.Application.robots
+GET     /favicon.ico                                 controllers.Assets.at(path="/public", file = "/favicon.ico")
+GET     /assets/*file                                controllers.Assets.versioned(path="/public", file: Asset)
 
-# Google Server
+# Proxy for Google
 #	First should be blackHole
-GET     /blackHole/*pathPart            controllers.Application.blackHole(pathPart: String)
+GET     /blackHole/*pathPart                         controllers.Application.blackHole(pathPart: String)
 
-GET     /                               controllers.Application.get(pathPart: String = "/", bbaassee: String ?= "")
-GET     /*pathPart                      controllers.Application.get(pathPart: String, bbaassee: String ?= "")
-POST    /*pathPart                      controllers.Application.post(pathPart: String)
+GET     /                                            controllers.Application.get(pathPart: String = "/", bbaassee: String ?= "")
+GET     /*pathPart                                   controllers.Application.get(pathPart: String, bbaassee: String ?= "")
+POST    /*pathPart                                   controllers.Application.post(pathPart: String)
 
 
 # Map static resources from the /public folder to the /assets URL path
