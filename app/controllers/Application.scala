@@ -82,7 +82,7 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                     bodyStr
                       .replace("ssl.gstatic.com", s"${refinedHost}/blackHole")
                       .replace("www.gstatic.com", s"${refinedHost}/blackHole")
-                      .replace("www.google.com",  s"${refinedHost}/blackHole")
+                      .replace("www.google.com",  s"${refinedHost}")
                       .replace("id.google.com",   s"${refinedHost}/blackHole")
                   content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
 
@@ -96,7 +96,7 @@ class Application @Inject() (ws: WSClient, implicit val mat: Materializer) exten
                     bodyStr
                       .replace("ssl.gstatic.com", s"${refinedHost}/blackHole")
                       .replace("www.gstatic.com", s"${refinedHost}/blackHole")
-                      .replace("www.google.com",  s"${refinedHost}/blackHole")
+                      .replace("www.google.com",  s"${refinedHost}")
                       .replace("id.google.com",   s"${refinedHost}/blackHole")
 
                   Ok(content + """function rwt(link){ link.target="_blank"; link.click(); }""")
