@@ -2,9 +2,12 @@ package controllers
 
 import java.util.Base64
 import akka.stream.Materializer
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import com.google.inject.Inject
 import play.api.Configuration
 import play.api.http.HttpEntity
+import play.api.libs.json.Json
 import play.api.libs.ws.{DefaultWSProxyServer, StreamedResponse, WSClient}
 import play.api.mvc._
 import scala.concurrent.duration._
@@ -16,6 +19,32 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
   val ignoreHeaders = Set("host", "play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time")
   val useHttpProxy = config.getBoolean("httpProxy.enable").getOrElse(false)
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
+
+
+
+  def test1 = Action.async { request =>
+    ws.url("http://g.jikewenku.cn:9000/test").withHeaders("User-Agent" -> "ahahahaha", "Referer" -> "http://g.jikewenku.cn:9000/test").withMethod("GET").execute().map{ resp =>
+      Ok("ok")
+
+      Result(
+        header = ResponseHeader(200),
+        body = HttpEntity.Streamed(Source.single(ByteString("")), None, None)
+      )
+
+    }
+  }
+
+  def test = Action{ request =>
+    println("test...")
+    request.headers.toSimpleMap.foreach{
+      case t =>
+        println(t._1 + " = " + t._2)
+    }
+
+    Ok(Json.obj("success" -> true))
+  }
+
+
   /**
     * Proxy all requests to Google Search.
  *

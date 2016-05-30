@@ -9,7 +9,11 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
 
   override def routeRequest(request: RequestHeader) = {
     val reqPath = request.path
+
+    println("requestHandler: " + reqPath)
     if(
+      reqPath == "/test" ||
+      reqPath == "/test1" ||
       reqPath == "/" ||
       reqPath.startsWith("/url") ||
       reqPath.startsWith("/xjs/") ||
