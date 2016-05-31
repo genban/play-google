@@ -14,6 +14,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
     if(
       reqPath == "/test" ||
       reqPath == "/test1" ||
+      reqPath == "/testHtml" ||
       reqPath == "/" ||
       reqPath.startsWith("/url") ||
       reqPath.startsWith("/xjs/") ||

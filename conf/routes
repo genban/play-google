@@ -3,6 +3,7 @@
 # ~~~~
 GET     /test                                        controllers.Application.test
 GET     /test1                                       controllers.Application.test1
+GET     /testHtml                                    controllers.Application.testHtml
 
 GET     /robots.txt                                  controllers.Application.robots
 GET     /favicon.ico                                 controllers.Assets.at(path="/public", file = "/favicon.ico")

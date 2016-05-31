@@ -12,7 +12,7 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
   val hostMap = Map("a.jikewenku.cn" -> "www.google.com")
 
   def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
-    println("Filter " + requestHeader.path)
+    println("GoogleFilter " + requestHeader.path)
     val reqHost = requestHeader.host.split(":")(0).toLowerCase()
     hostMap.get(reqHost) match {
       case Some(toHost) =>
@@ -31,6 +31,12 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
         //# 处理响应
         val refinedRequestHeaders = requestHeader.copy(headers = Headers(headers: _*))
         nextFilter(refinedRequestHeaders).flatMap { result =>
+          println("GoogleFilter----------------------" + result.body.contentType.getOrElse("Nulllllllll"))
+          result.header.headers.foreach{ t =>
+            println(t._1 + ": " + t._2)
+          }
+          println("GoogleFilter----------------------")
+
           //## 处理Set-Cookie响应头
           val respHeaders = result.header.headers.map{
             case (k, v) if k.trim.toLowerCase == "set-cookie" =>

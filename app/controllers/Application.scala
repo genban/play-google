@@ -35,13 +35,12 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
   }
 
   def test = Action{ request =>
-    println("test...")
-    request.headers.toSimpleMap.foreach{
-      case t =>
-        println(t._1 + " = " + t._2)
-    }
-
     Ok(Json.obj("success" -> true))
+  }
+
+  def testHtml = Action{ request =>
+
+    Ok(views.html.index()).withHeaders("X-Headers" -> "hahahah", "Content-Type" -> "text/html; charset=utf-8")
   }
 
 
