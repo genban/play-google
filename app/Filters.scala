@@ -15,7 +15,6 @@ class Filters @Inject() (googleFilter: GoogleFilter, implicit val mat: Materiali
     Seq(
       new GzipFilter(shouldGzip = (request, response) => {
           val contentType = response.body.contentType.getOrElse("").toLowerCase
-          println("GzipFilter " + request.path + " - " + contentType)
           contentType.contains("text") || contentType.contains("json") || contentType.contains("javascript")
         }
       ),

@@ -5,6 +5,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.google.inject.Inject
+import filters.GoogleFilter
 import play.api.Configuration
 import play.api.http.HttpEntity
 import play.api.libs.json.Json
@@ -20,6 +21,70 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
   val useHttpProxy = config.getBoolean("httpProxy.enable").getOrElse(false)
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
 
+  def executeRequest(pathPart: String) = Action.async(parse.raw) { request =>
+    val hostOpt = request.headers.toSimpleMap.find(t => t._1.toLowerCase == "host").map(_._2)
+    hostOpt match {
+      case Some(host) =>
+        val schema = if(request.secure){"https"}else{"http"}
+        val url = s"${schema}://${host}${request.path}?${request.rawQueryString}"
+
+        var req = ws.url(url).withRequestTimeout(15 seconds).withMethod(request.method).withHeaders(request.headers.toSimpleMap.toList: _*)
+        val bodyOpt = request.body.asBytes()
+        if(bodyOpt.nonEmpty){
+          req = req.withBody(bodyOpt.get)
+        }
+        if(useHttpProxy){
+          val randHttpProxy = httpProxyList(Random.nextInt(httpProxyList.size))
+          val proxySplitArr = randHttpProxy.split(":")
+          req = req.withProxyServer(DefaultWSProxyServer(proxySplitArr(0), proxySplitArr(1).toInt))
+        }
+        req
+          .stream().flatMap {
+          case StreamedResponse(response, body) =>
+            if (response.status >= 200 && response.status < 300) {
+              val refinedHost =
+                if(request.host.contains(":")){
+                  request.host
+                }else{
+                  s"${request.host}:80"
+                }
+
+              val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
+              if(contentType.contains("text/html") || contentType.contains("text/javascript")){
+                //Remove blocked request
+                body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
+                  var content = bodyStr
+                  GoogleFilter.hostMap.foreach{ t =>
+                    content = content.replace(t._2, t._1)
+                  }
+                  if(host.contains("www.google.com")) {
+                    content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
+                  }
+                  Ok(content)
+                    .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+                }
+              } else {
+                // If there's a content length, send that, otherwise return the body chunked
+                response.headers.find(t => t._1.trim.toLowerCase == "content-length").map(_._2) match {
+                  case Some(Seq(length)) =>
+                    Future.successful(Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), None)).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+                  case _ =>
+                    Future.successful(Ok.chunked(body).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+                }
+              }
+            } else if(response.status >= 300 && response.status < 500) {
+              Future.successful{
+                Status(response.status)
+                  .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+              }
+            } else {
+              Future.successful(InternalServerError("Sorry, server return " + response.status))
+            }
+        }
+      case None =>
+        Future.successful(Ok("Host Not Found."))
+    }
+  }
 
 
   def test1 = Action.async { request =>
@@ -35,6 +100,7 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
   }
 
   def test = Action{ request =>
+    println("test action ")
     Ok(Json.obj("success" -> true))
   }
 
