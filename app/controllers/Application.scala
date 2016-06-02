@@ -56,7 +56,7 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
             }
 
           val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
-          if(contentType.contains("text/html") || contentType.contains("text/javascript")){
+          if(contentType.contains("html") || contentType.contains("javascript")){
             //Remove blocked request
             body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
               println("refinedHost: " + refinedHost + " =================================================")
