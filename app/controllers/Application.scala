@@ -22,93 +22,82 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
 
   def executeRequest(pathPart: String) = Action.async(parse.raw) { request =>
-    val hostOpt = request.headers.toSimpleMap.find(t => t._1.toLowerCase == "host").map(_._2)
-    hostOpt match {
-      case Some(host) =>
-        val schema = if(request.secure){"https"}else{"http"}
-        val url = s"${schema}://${host}${request.path}?${request.rawQueryString}"
+    var requestHost = "www.google.com"
+    var requestPath = request.path
+    if(requestPath.startsWith("/dark_room/")){
+      requestPath = requestPath.replace("/dark_room/", "")
+      val pos = requestPath.indexOf("/")
+      if(pos > 0){
+        requestHost = requestPath.substring(0, pos)
+        requestPath = requestPath.replace(requestHost, "")
+      }
+    }
 
-        var req = ws.url(url).withRequestTimeout(15 seconds).withMethod(request.method).withHeaders(request.headers.toSimpleMap.toList: _*)
-        val bodyOpt = request.body.asBytes()
-        if(bodyOpt.nonEmpty){
-          req = req.withBody(bodyOpt.get)
-        }
-        if(useHttpProxy){
-          val randHttpProxy = httpProxyList(Random.nextInt(httpProxyList.size))
-          val proxySplitArr = randHttpProxy.split(":")
-          req = req.withProxyServer(DefaultWSProxyServer(proxySplitArr(0), proxySplitArr(1).toInt))
-        }
-        req
-          .stream().flatMap {
-          case StreamedResponse(response, body) =>
-            if (response.status >= 200 && response.status < 300) {
-              val refinedHost =
-                if(request.host.contains(":")){
-                  request.host
-                }else{
-                  s"${request.host}:80"
-                }
-
-              val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
-              if(contentType.contains("text/html") || contentType.contains("text/javascript")){
-                //Remove blocked request
-                body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
-                  var content = bodyStr
-                  GoogleFilter.hostMap.foreach{ t =>
-                    content = content.replace(t._2, t._1)
-                  }
-                  if(host.contains("www.google.com")) {
-                    content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
-                  }
-                  Ok(content)
-                    .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
-                }
-              } else {
-                // If there's a content length, send that, otherwise return the body chunked
-                response.headers.find(t => t._1.trim.toLowerCase == "content-length").map(_._2) match {
-                  case Some(Seq(length)) =>
-                    Future.successful(Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), None)).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
-                  case _ =>
-                    Future.successful(Ok.chunked(body).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
-                }
-              }
-            } else if(response.status >= 300 && response.status < 500) {
-              Future.successful{
-                Status(response.status)
-                  .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
-              }
-            } else {
-              Future.successful(InternalServerError("Sorry, server return " + response.status))
+    var req = ws.url(s"https://${requestHost}${requestPath}?${request.rawQueryString}")
+                .withRequestTimeout(10 seconds)
+                .withMethod(request.method).withHeaders(request.headers.toSimpleMap.toList.filter(_._1.trim.toLowerCase != "host"): _*)
+    val bodyOpt = request.body.asBytes()
+    if(bodyOpt.nonEmpty){
+      req = req.withBody(bodyOpt.get)
+    }
+    if(useHttpProxy){
+      val randHttpProxy = httpProxyList(Random.nextInt(httpProxyList.size))
+      val proxySplitArr = randHttpProxy.split(":")
+      req = req.withProxyServer(DefaultWSProxyServer(proxySplitArr(0), proxySplitArr(1).toInt))
+    }
+    req.stream().flatMap {
+      case StreamedResponse(response, body) =>
+        if (response.status >= 200 && response.status < 300) {
+          val refinedHost =
+            if(request.host.contains(":")){
+              request.host
+            }else{
+              s"${request.host}:80"
             }
+
+          val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
+          if(contentType.contains("text/html") || contentType.contains("text/javascript")){
+            //Remove blocked request
+            body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
+              println("refinedHost: " + refinedHost + " =================================================")
+              var content =
+                bodyStr
+                  .replace("www.google.com",  s"${refinedHost}")
+                  .replace("ssl.gstatic.com", s"${refinedHost}/dark_room/ssl.gstatic.com")
+                  .replace("www.gstatic.com", s"${refinedHost}/dark_room/www.gstatic.com")
+                  .replace("id.google.com",   s"${refinedHost}/dark_room/id.google.com")
+                  .replaceAll("encrypted-tbn0.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn0.gstatic.com")
+                  .replaceAll("encrypted-tbn1.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn1.gstatic.com")
+                  .replaceAll("encrypted-tbn2.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn2.gstatic.com")
+                  .replaceAll("encrypted-tbn3.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn3.gstatic.com")
+
+              if(contentType.contains("text/html")) {
+                content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
+              } else if(contentType.contains("text/javascript")){
+                content += """ function rwt(link){ link.target="_blank"; link.click(); } """
+              }
+              Ok(content)
+                .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+            }
+          } else {
+            // If there's a content length, send that, otherwise return the body chunked
+            response.headers.find(t => t._1.trim.toLowerCase == "content-length").map(_._2) match {
+              case Some(Seq(length)) =>
+                Future.successful(Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), None)).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+              case _ =>
+                Future.successful(Ok.chunked(body).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+            }
+          }
+        } else if(response.status >= 300 && response.status < 500) {
+          Future.successful{
+            Status(response.status)
+              .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+          }
+        } else {
+          Future.successful(InternalServerError("Sorry, server return " + response.status))
         }
-      case None =>
-        Future.successful(Ok("Host Not Found."))
     }
   }
-
-
-  def test1 = Action.async { request =>
-    ws.url("http://g.jikewenku.cn:9000/test").withHeaders("User-Agent" -> "ahahahaha", "Referer" -> "http://g.jikewenku.cn:9000/test").withMethod("GET").execute().map{ resp =>
-      Ok("ok")
-
-      Result(
-        header = ResponseHeader(200),
-        body = HttpEntity.Streamed(Source.single(ByteString("")), None, None)
-      )
-
-    }
-  }
-
-  def test = Action{ request =>
-    println("test action ")
-    Ok(Json.obj("success" -> true))
-  }
-
-  def testHtml = Action{ request =>
-
-    Ok(views.html.index()).withHeaders("X-Headers" -> "hahahah", "Content-Type" -> "text/html; charset=utf-8")
-  }
-
 
   /**
     * Proxy all requests to Google Search.

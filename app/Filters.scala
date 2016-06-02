@@ -13,11 +13,11 @@ class Filters @Inject() (googleFilter: GoogleFilter, implicit val mat: Materiali
 
   override val filters =
     Seq(
-      new GzipFilter(shouldGzip = (request, response) => {
+      /*new GzipFilter(shouldGzip = (request, response) => {
           val contentType = response.body.contentType.getOrElse("").toLowerCase
           contentType.contains("text") || contentType.contains("json") || contentType.contains("javascript")
         }
-      ),
+      ),*/
       googleFilter
     )
 
