@@ -17,7 +17,6 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class Application @Inject() (ws: WSClient, config: Configuration, implicit val mat: Materializer) extends Controller {
-  val ignoreHeaders = Set("host", "play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time")
   val useHttpProxy = config.getBoolean("httpProxy.enable").getOrElse(false)
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
 
@@ -54,18 +53,19 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
     req.stream().flatMap {
       case StreamedResponse(response, body) =>
         if (response.status >= 200 && response.status < 300) {
-          val refinedHost =
-            if(request.host.contains(":")){
+          //Nginx会将https改成http
+          val refinedHost = {
+            if(request.host.trim.endsWith(":80")){
+              request.host.split(":")(0)
+            } else {
               request.host
-            }else{
-              s"${request.host}:80"
             }
+          }
 
           val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
           if(contentType.contains("html") || contentType.contains("javascript")){
             //Remove blocked request
             body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
-              println("refinedHost: " + refinedHost + " =================================================")
               var content =
                 bodyStr
                   .replace("www.google.com",  s"${refinedHost}")
