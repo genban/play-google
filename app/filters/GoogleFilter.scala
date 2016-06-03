@@ -15,7 +15,6 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
   import GoogleFilter._
 
   def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
-    println("GoogleFilter " + requestHeader.path)
     //# 处理请求
     //## 移除多余的请求头
     var headers = requestHeader.headers.headers.filter{ t =>
