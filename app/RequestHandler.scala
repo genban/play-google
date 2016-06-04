@@ -11,7 +11,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
 
   override def routeRequest(request: RequestHeader) = {
     val reqPath = request.path
-    println("requestHandler: " + reqPath)
+    println(request.method + ": " + reqPath)
     if(reqPath.startsWith("/gen_204")){
       Some(Action(Results.NoContent))
     } else if(reqPath.startsWith("/url")){
@@ -34,8 +34,10 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       reqPath.startsWith("/logo/") ||
       reqPath.startsWith("/logos/") ||
       reqPath.startsWith("/imghp") ||
+      reqPath.startsWith("/searchbyimage/upload") ||
       reqPath.startsWith("/imgevent") ||
       reqPath.startsWith("/dark_room/encrypted-tbn") ||
+      reqPath.startsWith("/dark_room/lh") ||
       reqPath.startsWith("/textinputassistant/tia.png")
     ){
       //println("Pass: " + request.path)

@@ -72,10 +72,8 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
                   .replace("ssl.gstatic.com", s"${refinedHost}/dark_room/ssl.gstatic.com")
                   .replace("www.gstatic.com", s"${refinedHost}/dark_room/www.gstatic.com")
                   .replace("id.google.com",   s"${refinedHost}/dark_room/id.google.com")
-                  .replaceAll("encrypted-tbn0.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn0.gstatic.com")
-                  .replaceAll("encrypted-tbn1.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn1.gstatic.com")
-                  .replaceAll("encrypted-tbn2.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn2.gstatic.com")
-                  .replaceAll("encrypted-tbn3.gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn3.gstatic.com")
+                  .replaceAll("encrypted-tbn(\\d+).gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn$$1.gstatic.com")
+                  .replaceAll("lh(\\d+).googleusercontent.com",   s"${refinedHost}/dark_room/lh$$1.googleusercontent.com")
 
               if(contentType.contains("text/html")) {
                 content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
@@ -95,9 +93,17 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
             }
           }
         } else if(response.status >= 300 && response.status < 500) {
+          val respHeaders =
+            response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map{ t =>
+              if(t._1.trim.toLowerCase == "location"){
+                (t._1, t._2.map(_.replaceFirst("""http[s]?://[^/]+/?""", "/")))
+              } else {
+                t
+              }
+            }.map(t => (t._1, t._2.mkString("; ")))
           Future.successful{
             Status(response.status)
-              .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+              .withHeaders(respHeaders.toList: _*)
           }
         } else {
           Future.successful(InternalServerError("Sorry, server return " + response.status))
