@@ -33,11 +33,14 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       reqPath.startsWith("/robots.txt") ||
       reqPath.startsWith("/logo/") ||
       reqPath.startsWith("/logos/") ||
+      reqPath.startsWith("/maps") ||
       reqPath.startsWith("/imghp") ||
       reqPath.startsWith("/imgrc") ||
+      reqPath.startsWith("/imgres") ||
+      reqPath.startsWith("/imgevent") ||
+      reqPath.startsWith("/async/irc") ||
       reqPath.startsWith("/ajax/pi/imgdisc") ||
       reqPath.startsWith("/searchbyimage/upload") ||
-      reqPath.startsWith("/imgevent") ||
       reqPath.startsWith("/dark_room/encrypted-tbn") ||
       reqPath.startsWith("/dark_room/lh") ||
       reqPath.startsWith("/textinputassistant/tia.png")

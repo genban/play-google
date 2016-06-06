@@ -73,8 +73,12 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
             }
           }
 
-          val contentType = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
-          if(contentType.contains("html") || contentType.contains("javascript")){
+          val contentType   = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
+          //处理文字搜索的rwt函数不能影响到图片搜索的rwt函数
+          /*if(request.path = "/"){
+
+          }*/
+          if((contentType.contains("html") || contentType.contains("json")) && response.status != 204){
             //Remove blocked request
             body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
               var content =
@@ -86,10 +90,13 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
                   .replaceAll("encrypted-tbn(\\d+).gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn$$1.gstatic.com")
                   .replaceAll("lh(\\d+).googleusercontent.com",   s"${refinedHost}/dark_room/lh$$1.googleusercontent.com")
 
-              if(contentType.contains("text/html")) {
-                content += """<script>function rwt(link){ link.target="_blank"; link.click(); }</script>"""
-              } else if(contentType.contains("text/javascript")){
-                content += """ function rwt(link){ link.target="_blank"; link.click(); } """
+              if(request.path == "/"){
+                content += """<script>function rwt_(link){ link.target="_blank"; link.click(); }</script>"""
+              } else if(request.path == "/search" && contentType.contains("html")){
+                content = content.replace("rwt(this,", "rwt_(this,")
+                content += """<script>function rwt_(link){ link.target="_blank"; link.click(); }</script>"""
+              } else if(request.path == "/search" && contentType.contains("json")){
+                content = content.replace("rwt(this,", "rwt_(this,")
               }
               Ok(content)
                 .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
