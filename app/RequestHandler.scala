@@ -11,7 +11,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
 
   override def routeRequest(request: RequestHeader) = {
     val reqPath = request.path
-    println(request.method + ": " + reqPath)
+    //println(request.method + ": " + reqPath)
     if(reqPath.startsWith("/gen_204")){
       Some(Action(Results.NoContent))
     } else if(reqPath.startsWith("/url")){
@@ -34,6 +34,8 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       reqPath.startsWith("/logo/") ||
       reqPath.startsWith("/logos/") ||
       reqPath.startsWith("/imghp") ||
+      reqPath.startsWith("/imgrc") ||
+      reqPath.startsWith("/ajax/pi/imgdisc") ||
       reqPath.startsWith("/searchbyimage/upload") ||
       reqPath.startsWith("/imgevent") ||
       reqPath.startsWith("/dark_room/encrypted-tbn") ||
@@ -43,7 +45,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       //println("Pass: " + request.path)
       super.routeRequest(request)
     } else {
-      println("Intercept: " + request.path)
+      //println("Intercept: " + request.path)
       Some(Action(Results.NoContent))
     }
   }

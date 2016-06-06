@@ -38,7 +38,18 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
       }
     }
 
-    var req = ws.url(s"https://${requestHost}${requestPath}?${request.rawQueryString}")
+    val amendedQueryString =
+      if(requestPath == "/"){
+        if(request.rawQueryString.trim == ""){
+          "hl=zh-CN"
+        }else{
+          request.rawQueryString + "&hl=zh-CN"
+        }
+      } else {
+        request.rawQueryString
+      }
+
+    var req = ws.url(s"https://${requestHost}${requestPath}?${amendedQueryString}")
                 .withRequestTimeout(10 seconds)
                 .withMethod(request.method).withHeaders(request.headers.toSimpleMap.toList.filter(_._1.trim.toLowerCase != "host"): _*)
     val bodyOpt = request.body.asBytes()
