@@ -41,9 +41,9 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
     val amendedQueryString =
       if(requestPath == "/"){
         if(request.rawQueryString.trim == ""){
-          "hl=zh-CN"
+          "hl=zh-CN&lang=zh-CN&lr=lang_zh-CN"
         }else{
-          request.rawQueryString + "&hl=zh-CN"
+          request.rawQueryString + "&hl=zh-CN&lang=zh-CN&lr=lang_zh-CN"
         }
       } else {
         request.rawQueryString
