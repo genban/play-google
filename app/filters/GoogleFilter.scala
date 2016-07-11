@@ -31,11 +31,17 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
     //# 处理响应
     val refinedRequestHeaders = requestHeader.copy(headers = Headers(headers: _*))
     nextFilter(refinedRequestHeaders).map{ result =>
+      val reqHost =
+        if(requestHeader.host.contains(":")){
+          requestHeader.host.split(":")(0)
+        } else {
+          requestHeader.host
+        }
       //## 处理Set-Cookie响应头
       val respHeaders = result.header.headers.map{
         case (k, v) if k.trim.toLowerCase == "set-cookie" =>
           val setCookies = Cookies.decodeSetCookieHeader(v).map{ cookie =>
-            cookie.copy(domain = Some(requestHeader.host))
+            cookie.copy(domain = Some(reqHost))
           }
           (k, Cookies.encodeSetCookieHeader(setCookies))
         case other => other

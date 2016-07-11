@@ -10,3 +10,19 @@ Play-Google是一款基于PlayFramework开发的服务器端软件，利用Play-
 ```nohup ./play-google -J-Xmx300m -Dhttp.port=8080 > ../log.txt&```
 
 访问`http://server_ip:8080`测试启动是否成功。
+
+## 设置Http代理
+打开`conf/application.conf`,默认禁用Http代理，配置如下：
+```
+httpProxy {
+  enable: false
+  list = ["127.0.0.1:8080"]
+}
+```
+若要启用Http代理，修改配置如下：
+```
+httpProxy {
+  enable: true
+  list = ["127.0.0.1:8080"]
+}
+```
