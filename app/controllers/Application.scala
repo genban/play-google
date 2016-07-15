@@ -17,6 +17,7 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class Application @Inject() (ws: WSClient, config: Configuration, implicit val mat: Materializer) extends Controller {
+  val googleLang = config.getBoolean("google.language").getOrElse("en")
   val useHttpProxy = config.getBoolean("httpProxy.enable").getOrElse(false)
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
 
@@ -41,11 +42,9 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
     val amendedQueryString =
       if(requestPath == "/"){
         if(request.rawQueryString.trim == ""){
-          //"hl=zh-CN&lang=zh-CN&lr=lang_zh-CN"
-          "hl=en&lang=en&lr=lang_en"
+          s"hl=${googleLang}&lang=${googleLang}&lr=lang_${googleLang}"
         }else{
-          //request.rawQueryString + "&hl=zh-CN&lang=zh-CN&lr=lang_zh-CN"
-          request.rawQueryString + "&hl=en&lang=en&lr=lang_en"
+          request.rawQueryString + s"&hl=${googleLang}&lang=${googleLang}&lr=lang_${googleLang}"
         }
       } else {
         request.rawQueryString
@@ -77,9 +76,6 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
 
           val contentType   = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
           //处理文字搜索的rwt函数不能影响到图片搜索的rwt函数
-          /*if(request.path = "/"){
-
-          }*/
           if((contentType.contains("html") || contentType.contains("json")) && response.status != 204){
             //Remove blocked request
             body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
