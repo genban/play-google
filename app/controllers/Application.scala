@@ -17,7 +17,7 @@ import scala.concurrent.Future
 import scala.util.Random
 
 class Application @Inject() (ws: WSClient, config: Configuration, implicit val mat: Materializer) extends Controller {
-  val googleLang = config.getBoolean("google.language").getOrElse("en")
+  val googleLang = config.getString("google.language").getOrElse("en")
   val useHttpProxy = config.getBoolean("httpProxy.enable").getOrElse(false)
   val httpProxyList = config.getStringSeq("httpProxy.list").getOrElse(Seq.empty[String])
 
