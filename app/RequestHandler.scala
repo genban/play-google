@@ -23,6 +23,9 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       }
     } else if(
       reqPath == "/" ||
+      reqPath == "/ncr" ||
+      reqPath == "/preferences" ||
+      reqPath == "/setprefs" ||
       reqPath.startsWith("/url") ||
       reqPath.startsWith("/xjs/") ||
       reqPath.startsWith("/images/") ||
@@ -41,8 +44,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
       reqPath.startsWith("/async/irc") ||
       reqPath.startsWith("/ajax/pi/imgdisc") ||
       reqPath.startsWith("/searchbyimage/upload") ||
-      reqPath.startsWith("/dark_room/encrypted-tbn") ||
-      reqPath.startsWith("/dark_room/lh") ||
+      reqPath.startsWith("/routing_for/") ||
       reqPath.startsWith("/textinputassistant/tia.png")
     ){
       //println("Pass: " + request.path)

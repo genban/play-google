@@ -44,6 +44,10 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
             cookie.copy(domain = Some(reqHost))
           }
           (k, Cookies.encodeSetCookieHeader(setCookies))
+
+        case (k, v) if k.trim.toLowerCase == "location" =>
+          (k, v.replaceFirst("""//[^/]+/?""", s"//${requestHeader.host}/"))
+
         case other => other
       }
 

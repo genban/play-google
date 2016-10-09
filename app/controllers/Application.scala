@@ -29,9 +29,9 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
     */
   def executeRequest(pathPart: String) = Action.async(parse.raw) { request =>
     var requestHost = "www.google.com"
-    var requestPath = request.path
-    if(requestPath.startsWith("/dark_room/")){
-      requestPath = requestPath.replace("/dark_room/", "")
+    var requestPath = if(request.path.trim == "/" && !request.cookies.exists(c => c.name.toLowerCase == "nid")){ "/ncr" } else { request.path.trim }
+    if(requestPath.startsWith("/routing_for/")){
+      requestPath = requestPath.replace("/routing_for/", "")
       val pos = requestPath.indexOf("/")
       if(pos > 0){
         requestHost = requestPath.substring(0, pos)
@@ -65,28 +65,25 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
     req.stream().flatMap {
       case StreamedResponse(response, body) =>
         if (response.status >= 200 && response.status < 300) {
-          //Nginx会将https改成http
-          val refinedHost = {
-            if(request.host.trim.endsWith(":80")){
-              request.host.split(":")(0)
-            } else {
-              request.host
-            }
-          }
-
           val contentType   = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
           //处理文字搜索的rwt函数不能影响到图片搜索的rwt函数
-          if((contentType.contains("html") || contentType.contains("json")) && response.status != 204){
+          if((contentType.contains("html") || contentType.contains("json") || contentType.contains("javascript")) && response.status != 204){
             //Remove blocked request
             body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
+              val scheme = if(request.secure){ "https" } else { "http" }
               var content =
                 bodyStr
-                  .replace("www.google.com",  s"${refinedHost}")
-                  .replace("ssl.gstatic.com", s"${refinedHost}/dark_room/ssl.gstatic.com")
-                  .replace("www.gstatic.com", s"${refinedHost}/dark_room/www.gstatic.com")
-                  .replace("id.google.com",   s"${refinedHost}/dark_room/id.google.com")
-                  .replaceAll("encrypted-tbn(\\d+).gstatic.com",   s"${refinedHost}/dark_room/encrypted-tbn$$1.gstatic.com")
-                  .replaceAll("lh(\\d+).googleusercontent.com",   s"${refinedHost}/dark_room/lh$$1.googleusercontent.com")
+                  .replaceAll("http[s]?://www.google.com",  s"${scheme}://${request.host}")
+                  .replaceAll("www.google.com",  s"${request.host}")
+                  .replaceAll("http[s]?://ssl.gstatic.com", s"${scheme}://${request.host}/routing_for/ssl.gstatic.com")
+                  .replaceAll("ssl.gstatic.com", s"${request.host}/routing_for/ssl.gstatic.com")
+                  .replaceAll("http[s]?://www.gstatic.com", s"${scheme}://${request.host}/routing_for/www.gstatic.com")
+                  .replaceAll("www.gstatic.com", s"${request.host}/routing_for/www.gstatic.com")
+                  .replaceAll("http[s]?://id.google.com",   s"${scheme}://${request.host}/routing_for/id.google.com")
+                  .replaceAll("http[s]?://apis.google.com",   s"${scheme}://${request.host}/routing_for/apis.google.com")
+                  .replaceAll("apis.google.com",   s"${request.host}/routing_for/apis.google.com")
+                  .replaceAll("http[s]?://encrypted-tbn(\\d+).gstatic.com",   s"${scheme}://${request.host}/routing_for/encrypted-tbn$$1.gstatic.com")
+                  .replaceAll("http[s]?://lh(\\d+).googleusercontent.com",   s"${scheme}://${request.host}/routing_for/lh$$1.googleusercontent.com")
 
               if(request.path == "/"){
                 content += """<script>function rwt_(link){ link.target="_blank"; link.click(); }</script>"""
@@ -109,17 +106,9 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
             }
           }
         } else if(response.status >= 300 && response.status < 500) {
-          val respHeaders =
-            response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map{ t =>
-              if(t._1.trim.toLowerCase == "location"){
-                (t._1, t._2.map(_.replaceFirst("""http[s]?://[^/]+/?""", "/")))
-              } else {
-                t
-              }
-            }.map(t => (t._1, t._2.mkString("; ")))
           Future.successful{
             Status(response.status)
-              .withHeaders(respHeaders.toList: _*)
+              .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
           }
         } else {
           Future.successful(InternalServerError("Sorry, server return " + response.status))
