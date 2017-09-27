@@ -4,13 +4,13 @@ version := "1.2.0"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.12.2"
 
 libraryDependencies ++= Seq(
-  cache,
+  guice,
+  ehcache,
   ws,
-  filters,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test
+  filters
 )
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

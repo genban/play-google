@@ -1,16 +1,19 @@
 package controllers
 
 import java.util.Base64
+import javax.inject.Inject
+
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import com.google.inject.Inject
 import filters.GoogleFilter
 import play.api.Configuration
 import play.api.http.HttpEntity
 import play.api.libs.json.Json
-import play.api.libs.ws.{DefaultWSProxyServer, StreamedResponse, WSClient}
+import play.api.libs.ws.{DefaultWSProxyServer, WSClient}
 import play.api.mvc._
+import play.libs.ws.ahc.StreamedResponse
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -62,14 +65,14 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
       val proxySplitArr = randHttpProxy.split(":")
       req = req.withProxyServer(DefaultWSProxyServer(proxySplitArr(0), proxySplitArr(1).toInt))
     }
-    req.stream().flatMap {
-      case StreamedResponse(response, body) =>
-        if (response.status >= 200 && response.status < 300) {
-          val contentType   = response.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
+    req.stream().flatMap { wsResp =>
+      //case StreamedResponse(response, body) =>
+        if (wsResp.status >= 200 && wsResp.status < 300) {
+          val contentType   = wsResp.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2.mkString("; ")).getOrElse("application/octet-stream").toLowerCase
           //处理文字搜索的rwt函数不能影响到图片搜索的rwt函数
-          if((contentType.contains("html") || contentType.contains("json") || contentType.contains("javascript")) && response.status != 204){
+          if((contentType.contains("html") || contentType.contains("json") || contentType.contains("javascript")) && wsResp.status != 204){
             //Remove blocked request
-            body.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
+            wsResp.bodyAsSource.runReduce(_.concat(_)).map(_.utf8String)map{ bodyStr =>
               val scheme = if(request.secure){ "https" } else { "http" }
               var content =
                 bodyStr
@@ -94,24 +97,24 @@ class Application @Inject() (ws: WSClient, config: Configuration, implicit val m
                 content = content.replace("rwt(this,", "rwt_(this,")
               }
               Ok(content)
-                .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+                .withHeaders(wsResp.headers.filter(t => t._1.trim.toLowerCase != "content-length" && t._1.trim.toLowerCase != "transfer-encoding" && t._1.trim.toLowerCase != "content-encoding").map(t => (t._1, t._2.mkString("; "))).toList: _*)
             }
           } else {
             // If there's a content length, send that, otherwise return the body chunked
-            response.headers.find(t => t._1.trim.toLowerCase == "content-length").map(_._2) match {
+            wsResp.headers.find(t => t._1.trim.toLowerCase == "content-length").map(_._2) match {
               case Some(Seq(length)) =>
-                Future.successful(Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), None)).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+                Future.successful(Ok.sendEntity(HttpEntity.Streamed(wsResp.bodyAsSource, Some(length.toLong), None)).withHeaders(wsResp.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
               case _ =>
-                Future.successful(Ok.chunked(body).withHeaders(response.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
+                Future.successful(Ok.chunked(wsResp.bodyAsSource).withHeaders(wsResp.headers.map(t => (t._1, t._2.mkString("; "))).toList: _*))
             }
           }
-        } else if(response.status >= 300 && response.status < 500) {
+        } else if(wsResp.status >= 300 && wsResp.status < 500) {
           Future.successful{
-            Status(response.status)
-              .withHeaders(response.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
+            Status(wsResp.status)
+              .withHeaders(wsResp.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
           }
         } else {
-          Future.successful(InternalServerError("Sorry, server return " + response.status))
+          Future.successful(InternalServerError("Sorry, server return " + wsResp.status))
         }
     }
   }
