@@ -1,1 +1,2 @@
 用Filter改写成多域名形式，理论上可以代理任何网站。
+SNI在国内主机上无法工作（配置Hosts是生效的），可以通过AHC的NameResolver解决。

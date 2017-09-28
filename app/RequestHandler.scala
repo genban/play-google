@@ -16,7 +16,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
     val reqPath = request.path
     //println(request.method + ": " + reqPath)
     if (loginCheck && request.session.get("login").isEmpty){
-      Some(Action(Results.Forbidden))
+      Some(Action(Results.Ok("You aren't authorized.")))
     } else if (domain != "" && !request.host.contains(domain)){
       Some(Action(Results.Forbidden))
     } else if(reqPath.startsWith("/gen_204")){
