@@ -68,6 +68,7 @@ class Application @Inject() (cc: ControllerComponents, ws: WSClient, config: Con
       .withRequestTimeout(15 seconds)
       .withMethod(request.method)
       .withHttpHeaders(request.headers.toSimpleMap.toList.filter(_._1.toLowerCase != "host"): _*)
+      .addHttpHeaders("Host" -> requestHost)
 
     val bodyOpt = request.body.asBytes()
     if(bodyOpt.nonEmpty){

@@ -17,7 +17,7 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
     //println(request.method + ": " + reqPath)
     if (loginCheck && request.session.get("login").isEmpty){
       Some(Action(Results.Forbidden))
-    } if (domain != "" && !request.host.contains(domain)){
+    } else if (domain != "" && !request.host.contains(domain)){
       Some(Action(Results.Forbidden))
     } else if(reqPath.startsWith("/gen_204")){
       Some(Action(Results.NoContent))
