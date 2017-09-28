@@ -7,7 +7,7 @@ import scala.concurrent.Future
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object GoogleFilter{
-  val ignoreHeaders = Set("play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time")
+  val ignoredRequestHeaders = Set("play_session", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-port", "via", "connect-time", "x-request-start", "total-route-time", "remote-address")
 }
 
 @Singleton
@@ -18,7 +18,7 @@ class GoogleFilter @Inject() (implicit val mat: Materializer) extends Filter {
     //# 处理请求
     //## 移除多余的请求头
     var headers = requestHeader.headers.headers.filter{ t =>
-      !ignoreHeaders.contains(t._1.trim.toLowerCase())
+      !ignoredRequestHeaders.contains(t._1.trim.toLowerCase())
     }
     //## 修正referer请求头
     headers = headers.map{

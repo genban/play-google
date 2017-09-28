@@ -1,5 +1,6 @@
 import javax.inject.Inject
 
+import play.api.Configuration
 import play.api.http._
 import play.api.mvc._
 import play.api.routing.Router
@@ -7,12 +8,18 @@ import play.api.routing.Router
 import scala.concurrent.Future
 
 class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
-  configuration: HttpConfiguration, filters: HttpFilters) extends DefaultHttpRequestHandler(router, errorHandler, configuration, filters) {
+  configuration: HttpConfiguration, filters: HttpFilters, config: Configuration) extends DefaultHttpRequestHandler(router, errorHandler, configuration, filters) {
+  val domain = config.getOptional[String]("domain").getOrElse("")
+  val loginCheck = config.getOptional[Boolean]("loginCheck").getOrElse(false)
 
   override def routeRequest(request: RequestHeader) = {
     val reqPath = request.path
     //println(request.method + ": " + reqPath)
-    if(reqPath.startsWith("/gen_204")){
+    if (loginCheck && request.session.get("login").isEmpty){
+      Some(Action(Results.Forbidden))
+    } if (domain != "" && !request.host.contains(domain)){
+      Some(Action(Results.Forbidden))
+    } else if(reqPath.startsWith("/gen_204")){
       Some(Action(Results.NoContent))
     } else if(reqPath.startsWith("/url")){
       request.getQueryString("url") match {
