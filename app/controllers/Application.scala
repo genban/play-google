@@ -65,7 +65,7 @@ class Application @Inject() (cc: ControllerComponents, ws: WSClient, config: Con
     val hostInUrl = if (useSniProxy && sniProxyList.nonEmpty) { sniProxyList.head } else { requestHost }
     var req = ws.url(s"https://${hostInUrl}${requestPath}?${amendedQueryString}")
       .withVirtualHost(requestHost)
-      .withRequestTimeout(15 seconds)
+      .withRequestTimeout(10 seconds)
       .withMethod(request.method)
       .withHttpHeaders(request.headers.toSimpleMap.toList.filter(_._1.toLowerCase != "host"): _*)
       .addHttpHeaders("Host" -> requestHost)
@@ -138,7 +138,7 @@ class Application @Inject() (cc: ControllerComponents, ws: WSClient, config: Con
             .withHeaders(wsResp.headers.filter(t => t._1.trim.toLowerCase == "location" || t._1.trim.toLowerCase == "set-cookie").map(t => (t._1, t._2.mkString("; "))).toList: _*)
         }
       } else {
-        Future.successful(InternalServerError("Sorry, server returns " + wsResp.status))
+        Future.successful(InternalServerError(wsResp.status.toString))
       }
     }
   }

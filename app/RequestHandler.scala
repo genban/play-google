@@ -16,9 +16,9 @@ class RequestHandler @Inject() (router: Router, errorHandler: HttpErrorHandler,
     val reqPath = request.path
     //println(request.method + ": " + reqPath)
     if (loginCheck && request.session.get("login").isEmpty){
-      Some(Action(Results.Ok("You aren't authorized.")))
+      Some(Action(Results.Ok("非常抱歉，搜索功能仅供内部使用！")))
     } else if (domain != "" && !request.host.contains(domain)){
-      Some(Action(Results.Forbidden))
+      Some(Action(Results.Ok("非常抱歉，搜索功能仅供内部使用！")))
     } else if(reqPath.startsWith("/gen_204")){
       Some(Action(Results.NoContent))
     } else if(reqPath.startsWith("/url")){
