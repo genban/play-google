@@ -1,18 +1,24 @@
 import javax.inject._
 
 import akka.stream.Materializer
+import filters.GoogleFilter
 import play.api.http.HttpFilters
+import play.api.mvc.EssentialAction
 import play.filters.gzip.GzipFilter
 
 @Singleton
-class Filters @Inject() (implicit val mat: Materializer) extends HttpFilters {
+class Filters @Inject() (googleFilter: GoogleFilter, implicit val mat: Materializer) extends HttpFilters {
+  val next: EssentialAction = null
+  val ret = googleFilter(next)
+
   override val filters =
     Seq(
       new GzipFilter(shouldGzip = (request, response) => {
-          val contentType = response.header.headers.find(t => t._1.trim.toLowerCase == "content-type").map(_._2).getOrElse("").toLowerCase
+          val contentType = response.body.contentType.getOrElse("").toLowerCase
           contentType.contains("text") || contentType.contains("json") || contentType.contains("javascript")
         }
-      )
+      ),
+      googleFilter
     )
 
 }
